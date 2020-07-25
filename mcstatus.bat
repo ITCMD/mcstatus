@@ -4,32 +4,53 @@
 ::The first version sucked really bad and I lost the files.
 ::Epstein didn't kill himself.
 @mode con lines=30 cols=100
+setlocal EnableDelayedExpansion
 :reload
+title MCStatus V2.3 ^| By Lukaka ^|
 del /f /q "%temp%\mcs*.json"
 if exist "Bin\jq-win64.exe" cd Bin
-title MCStatus V2.3 ^| By Lukaka ^|
 cls
-setlocal EnableDelayedExpansion
-::=====================================
-set hostname=play.wildcraftmc.com
-set port=25565
-:: Below is for time in between refresh. Recommended time if 5 minutes (300) since mcs service refreshes on that clock.
-set wait=300
-::=====================================
+echo [90m====================================================================================================[32m
+type logo.ascii
+echo.
+echo [90m====================================================================================================[32m
+echo.
+echo [90mPress S to enter settings . . .[0m
+choice /c qs /t 2 /d q /n >nul 2>nul
+if %errorlevel%==2 goto settings
+if not exist "settings.ini" (
+	echo [0mInitial Setup Required . . .[32m
+	goto settings
+)
+cls
+for /f %%A in (settings.ini) do (
+set %%~A
+)
+if "%wait%"=="" set wait=300
+if "%wait%"=="300" (
+	set waitmessage=5 minutes
+) ELSE (
+	set waitmessage=%wait% seconds
+)
+if "%hostname%"=="" (
+	echo [0mHostname not set.[3m
+	goto settings
+)
+if "%port%"=="" set port=25565
+if "%port%"=="%hostname%" set port=25565
 for /f "tokens=1,2 delims=[]" %%A in ('ping %hostname% -n 1^| find "Pinging"') do set ip=%%B
 :: optionally you may override the hostname processing, simply replace the variables below with format serverip_port
 set serverid=%ip%_%port%
 set session=%random%%random%
-::=====================================
-::    DO NOT EDIT PAST THIS LINE!
-::=====================================
 curl https://launchermeta.mojang.com/mc/game/version_manifest.json -o "%appdata%\minecraft_version_manifest.json" >nul 2>nul
 if "%errorlevel%"=="0" (
 	set mojang_release=ok
 ) ELSE (
 	echo An error occured when fetching mojang release. Check github for update.
 	set mojang_release=fail
+	timeout /t 5
 )
+cls
 :scan
 timeout /t 1 /nobreak >nul 2>nul
 title MCStatus V2.3 ^| By Lukaka ^| *
@@ -212,6 +233,15 @@ echo Scan may not have occured yet. Waiting at least 5 minutes after adding a se
 pause
 goto reload
 
+:settings
+echo Enter hostname or static IP address of Minecraft Server:[0m
+set /p hostname=">[96m"
+echo [3mEnter Port (default is 25565):[0m
+set /p port=">[96m"
+(echo hostname=%hostname%)>settings.ini
+(echo port=%port%)>>settings.ini
+(echo wait=300)>>settings.ini
+goto reload
 
 :scan_off
 echo Server was found on minecraft-statistics, however, scanning is dissabled.
@@ -242,7 +272,7 @@ goto reload
 :wait
 echo.
 echo [90m====================================================================================================[0m
-echo [90mWaiting %wait% Seconds before continuing . . .[0m
+echo [90mWaiting %waitmessage% before continuing . . .[0m
 timeout /t %wait% /nobreak >nul
 goto scan
 
@@ -294,9 +324,7 @@ if %server_uptime% LSS 80 (
 	echo                       Server Average Uptime: [[92m%server_uptime%%%[0m]
 )
 echo.
-echo [90mScanning again in %wait% seconds . . .[0m
-timeout /t %wait% >nul
-goto scan
+goto wait
 
 
 
